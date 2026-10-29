@@ -54,7 +54,8 @@ type Problem struct {
 
 	// Extensions holds any additional members present in the
 	// application/problem+json object that are not part of the base schema.
-	// Keys must not collide with the standard fields above.
+	// A key that collides with a standard field is ignored when marshaling;
+	// the struct field is written instead.
 	// Use [Problem.WithExtension] to add entries.
 	Extensions map[string]json.RawMessage `json:"-"`
 }
@@ -113,11 +114,12 @@ func (p *Problem) WithDetail(detail string) *Problem {
 }
 
 // WithExtension adds an RFC 9457 extension member to the Problem and returns
-// the receiver. value is JSON-marshaled; panicking on marshal failure is
-// intentional — extension values should always be serializable.
+// the receiver. value is JSON-marshaled immediately; if that fails, the error
+// is discarded and the member is written as null. Extension values should
+// always be serializable.
 //
-// Keys must not shadow the standard fields ("type", "status", "title",
-// "detail", "instance").
+// A key that shadows a standard field ("type", "status", "title", "detail",
+// "instance") is stored but ignored when marshaling.
 //
 //	p.WithExtension("errors", validationErrors)
 func (p *Problem) WithExtension(key string, value any) *Problem {
