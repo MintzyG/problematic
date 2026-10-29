@@ -10,7 +10,7 @@ import (
 	"log"
 	"net/http"
 
-	fp "github.com/MintzyG/fun/problems"
+	fp "github.com/MintzyG/problematic"
 )
 
 // ── domain errors ─────────────────────────────────────────────────────────────

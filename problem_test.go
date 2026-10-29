@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	fp "github.com/MintzyG/fun/problems"
+	fp "github.com/MintzyG/problematic"
 )
 
 // ── New ──────────────────────────────────────────────────────────────────────

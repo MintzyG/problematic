@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	fp "github.com/MintzyG/fun/problems"
+	fp "github.com/MintzyG/problematic"
 )
 
 func main() {

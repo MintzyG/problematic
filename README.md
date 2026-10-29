@@ -1,4 +1,4 @@
-# fp — `fun/problems`
+# problematic
 
 RFC 9457 Problem Details for HTTP APIs in Go.
 
@@ -22,13 +22,13 @@ RFC 9457 Problem Details for HTTP APIs in Go.
 ## Installation
 
 ```sh
-go get github.com/MintzyG/fun/problems
+go get github.com/MintzyG/problematic
 ```
 
 Import with a short alias:
 
 ```go
-import fp "github.com/MintzyG/fun/problems"
+import fp "github.com/MintzyG/problematic"
 ```
 
 ## Usage
@@ -143,4 +143,4 @@ Resolution order in `FromError`:
 
 ## License
 
-Part of the [fun](https://github.com/MintzyG/fun) library suite.
+MIT. See [LICENSE](LICENSE).
