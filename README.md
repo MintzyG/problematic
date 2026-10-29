@@ -104,10 +104,8 @@ func domainMapper(err error) *fp.Problem {
 func handler(w http.ResponseWriter, r *http.Request) {
     user, err := repo.GetUser(r.Context(), id)
     if err != nil {
-        p := fp.FromError(err, domainMapper)
-        w.Header().Set("Content-Type", "application/problem+json")
-        w.WriteHeader(p.Status)
-        json.NewEncoder(w).Encode(p)
+        log.Printf("get user: %v", err)
+        _ = fp.Write(w, fp.FromError(err, domainMapper))
         return
     }
     // ...
@@ -118,11 +116,21 @@ Resolution order in `FromError`:
 
 1. If `err` is (or wraps) a `*Problem`, return it directly.
 2. Try each `ErrorMapper` in order; first non-nil result wins.
-3. Fall back to a 500 Problem with `err.Error()` as the detail.
+3. Fall back to a generic 500 Problem whose detail is `Internal Server Error`. The error's own message never reaches the client, so log it yourself.
+
+### Writing a Problem
+
+`Write` sets `Content-Type: application/problem+json` (`fp.ContentType`), writes `p.Status` and encodes `p` as the body. It marshals before writing anything, so a marshal error comes back with the response untouched.
+
+```go
+if err := fp.Write(w, p); err != nil {
+    log.Printf("write problem: %v", err)
+}
+```
 
 ## JSON behaviour
 
-- **Marshal**: standard fields + extension members are flattened into a single top-level object.
+- **Marshal**: standard fields + extension members are flattened into a single top-level object. Every standard member is always written, even when empty. An extension whose key is a standard member (`type`, `status`, `title`, `detail`, `instance`) is skipped, so it can never replace the real field.
 - **Unmarshal**: standard fields are decoded into the struct; any unknown top-level keys are collected into `Extensions` as `json.RawMessage`, so extension data is never silently dropped.
 
 ## Examples

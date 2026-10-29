@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	fp "github.com/MintzyG/problematic"
@@ -273,6 +274,95 @@ func TestFromError_FallsBackTo500(t *testing.T) {
 	got := fp.FromError(errors.New("something exploded"))
 	if got.Status != 500 {
 		t.Errorf("Status: want 500, got %d", got.Status)
+	}
+}
+
+func TestFromError_FallbackHidesErrorMessage(t *testing.T) {
+	got := fp.FromError(errors.New("pq: password authentication failed"))
+	if got.Detail != "Internal Server Error" {
+		t.Errorf("Detail: want %q, got %q", "Internal Server Error", got.Detail)
+	}
+}
+
+// ── extensions vs standard members ───────────────────────────────────────────
+
+func TestMarshalJSON_ExtensionCannotShadowStandardMember(t *testing.T) {
+	p := fp.New(404).WithDetail("real").
+		WithExtension("status", 200).
+		WithExtension("detail", "fake").
+		WithExtension("extra", "kept")
+
+	b, err := json.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	if m["status"] != float64(404) {
+		t.Errorf("status: want 404, got %v", m["status"])
+	}
+	if m["detail"] != "real" {
+		t.Errorf("detail: want %q, got %v", "real", m["detail"])
+	}
+	if m["extra"] != "kept" {
+		t.Errorf("extra: want %q, got %v", "kept", m["extra"])
+	}
+}
+
+func TestMarshalJSON_AlwaysWritesStandardMembers(t *testing.T) {
+	b, err := json.Marshal(fp.New(404))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range []string{"type", "status", "title", "detail", "instance"} {
+		if _, ok := m[k]; !ok {
+			t.Errorf("member %q missing from %s", k, b)
+		}
+	}
+}
+
+func TestWithExtension_UnmarshalableValueIsNull(t *testing.T) {
+	p := fp.New(400).WithExtension("bad", make(chan int))
+	b, err := json.Marshal(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(b, &m); err != nil {
+		t.Fatal(err)
+	}
+	if v, ok := m["bad"]; !ok || v != nil {
+		t.Errorf("bad: want null, got %v (present %v)", v, ok)
+	}
+}
+
+// ── Write ────────────────────────────────────────────────────────────────────
+
+func TestWrite_SetsHeaderStatusAndBody(t *testing.T) {
+	rec := httptest.NewRecorder()
+	p := fp.New(http.StatusConflict).WithDetail("slug taken").WithInstance("/projects")
+
+	if err := fp.Write(rec, p); err != nil {
+		t.Fatal(err)
+	}
+	if got := rec.Header().Get("Content-Type"); got != fp.ContentType {
+		t.Errorf("Content-Type: want %q, got %q", fp.ContentType, got)
+	}
+	if rec.Code != http.StatusConflict {
+		t.Errorf("status: want 409, got %d", rec.Code)
+	}
+	var got fp.Problem
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != 409 || got.Detail != "slug taken" || got.Instance != "/projects" {
+		t.Errorf("body: got %+v", got)
 	}
 }
 

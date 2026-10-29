@@ -16,14 +16,14 @@ type ErrorMapper func(err error) *Problem
 //  1. If err already is (or wraps) a *Problem via errors.As, that Problem is
 //     returned directly.
 //  2. Each mapper is tried in order; the first non-nil result wins.
-//  3. If no mapper matches, a 500 Internal Server Error Problem is returned
-//     with the error message as its Detail.
+//  3. If no mapper matches, a generic 500 Internal Server Error Problem is
+//     returned. Its Detail is the status text, never err's message, so an
+//     unmapped error cannot leak internals to the client; log err yourself.
 //
 // This makes FromError safe to call unconditionally in HTTP handlers:
 //
 //	p := fp.FromError(err, myDomainMapper)
-//	w.WriteHeader(p.Status)
-//	json.NewEncoder(w).Encode(p)
+//	_ = fp.Write(w, p)
 func FromError(err error, mappers ...ErrorMapper) *Problem {
 	if p, ok := errors.AsType[*Problem](err); ok {
 		return p
@@ -33,5 +33,6 @@ func FromError(err error, mappers ...ErrorMapper) *Problem {
 			return p
 		}
 	}
-	return New(http.StatusInternalServerError).WithDetail(err.Error())
+	return New(http.StatusInternalServerError).
+		WithDetail(http.StatusText(http.StatusInternalServerError))
 }

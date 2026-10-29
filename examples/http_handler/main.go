@@ -4,7 +4,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -36,15 +35,6 @@ func domainMapper(err error) *fp.Problem {
 	return nil
 }
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-
-// writeProblem writes a Problem as application/problem+json.
-func writeProblem(w http.ResponseWriter, p *fp.Problem) {
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(p.Status)
-	_ = json.NewEncoder(w).Encode(p)
-}
-
 // ── handlers ──────────────────────────────────────────────────────────────────
 
 func getUser(w http.ResponseWriter, r *http.Request) {
@@ -54,12 +44,12 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 			WithType("https://example.com/errors/missing-param").
 			WithDetail("query parameter 'id' is required").
 			WithInstance(r.URL.Path)
-		writeProblem(w, p)
+		_ = fp.Write(w, p)
 		return
 	}
 	if id == "99" {
 		// Simulate a domain error bubbling up.
-		writeProblem(w, fp.FromError(ErrForbidden, domainMapper))
+		_ = fp.Write(w, fp.FromError(ErrForbidden, domainMapper))
 		return
 	}
 
